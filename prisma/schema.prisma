@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ClothCategory {
+  TOP
+  BOTTOM
+  DRESS
+  OUTERWEAR
+  SHOES
+  SOCKS
+  ACCESSORY
+}
+
+enum ClothSeason {
+  SPRING
+  SUMMER
+  AUTUMN
+  WINTER
+  ALL_SEASONS
+}
+
+enum ClothFormality {
+  CASUAL
+  OFFICE
+  SPORT
+  SPECIAL
+}
+
+enum OutfitScenario {
+  DAILY
+  OFFICE
+  TRAVEL
+  SPECIAL
+}
+
+enum OutfitItemRole {
+  TOP
+  BOTTOM
+  SHOES
+  OUTERWEAR
+  DRESS
+  SOCKS
+  ACCESSORY
+  OTHER
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  profiles     Profile[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Profile {
+  id               String      @id @default(cuid())
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  name             String
+  ageRange         String?
+  gender           String?
+  stylePreferences String[]
+  locationCity     String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  clothItems       ClothItem[]
+  outfits          Outfit[]
+
+  @@index([userId])
+}
+
+model ClothItem {
+  id         String        @id @default(cuid())
+  profile    Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId  String
+  imageUrl   String
+  category   ClothCategory
+  color      String
+  material   String?
+  season     ClothSeason
+  formality  ClothFormality
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  outfitItems OutfitItem[]
+
+  @@index([profileId])
+}
+
+model Outfit {
+  id             String        @id @default(cuid())
+  profile        Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId      String
+  date           DateTime
+  scenario       OutfitScenario
+  notes          String?
+  weatherSummary String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          OutfitItem[]
+
+  @@unique([profileId, date, scenario])
+  @@index([profileId, date])
+}
+
+model OutfitItem {
+  id           String          @id @default(cuid())
+  outfit       Outfit          @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  outfitId     String
+  clothItem    ClothItem       @relation(fields: [clothItemId], references: [id])
+  clothItemId  String
+  role         OutfitItemRole
+  createdAt    DateTime        @default(now())
+
+  @@index([outfitId])
+  @@index([clothItemId])
+}
