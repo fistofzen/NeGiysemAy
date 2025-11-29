@@ -3,6 +3,7 @@ import { formatISO } from "date-fns";
 import { prisma } from "@/lib/db/prisma";
 import { getActiveSession } from "@/lib/auth/session";
 import { getActiveProfile } from "@/lib/profiles/active-profile";
+import AppShell from "@/components/layout/app-shell";
 import DashboardClient from "@/app/dashboard/dashboard-client";
 
 type DashboardProfileRecord = {
@@ -103,11 +104,13 @@ const DashboardPage = async () => {
   }));
 
   return (
-    <DashboardClient
-      initialProfiles={formattedProfiles}
-      initialDate={formatISO(new Date(), { representation: "date" })}
-      activeProfileId={activeProfile.id}
-    />
+    <AppShell activeProfileName={profiles.find((profile) => profile.id === activeProfile.id)?.name}>
+      <DashboardClient
+        initialProfiles={formattedProfiles}
+        initialDate={formatISO(new Date(), { representation: "date" })}
+        activeProfileId={activeProfile.id}
+      />
+    </AppShell>
   );
 };
 

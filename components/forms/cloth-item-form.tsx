@@ -47,11 +47,11 @@ type FormState = {
 };
 
 const initialState: FormState = {
-  category: "TOP",
+  category: "",
   color: "",
   material: "",
-  season: "ALL_SEASONS",
-  formality: "CASUAL",
+  season: "",
+  formality: "",
   notes: "",
 };
 
@@ -70,10 +70,18 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
     try {
       const formData = new FormData();
       formData.append("profileId", profileId);
-      formData.append("category", state.category);
-      formData.append("color", state.color);
-      formData.append("season", state.season);
-      formData.append("formality", state.formality);
+      if (state.category) {
+        formData.append("category", state.category);
+      }
+      if (state.color) {
+        formData.append("color", state.color);
+      }
+      if (state.season) {
+        formData.append("season", state.season);
+      }
+      if (state.formality) {
+        formData.append("formality", state.formality);
+      }
       if (state.material) {
         formData.append("material", state.material);
       }
@@ -109,11 +117,10 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
       <Select
         label="Kategori"
         value={state.category}
-        options={categoryOptions}
+        options={[{ label: "Otomatik (AI)", value: "" }, ...categoryOptions]}
         onChange={(event: ChangeEvent<HTMLSelectElement>) =>
           setState((prev: FormState) => ({ ...prev, category: event.target.value }))
         }
-        required
       />
       <Input
         label="Renk"
@@ -121,7 +128,6 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
         onChange={(event: ChangeEvent<HTMLInputElement>) =>
           setState((prev: FormState) => ({ ...prev, color: event.target.value }))
         }
-        required
       />
       <Input
         label="Materyal"
@@ -133,20 +139,18 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
       <Select
         label="Sezon"
         value={state.season}
-        options={seasonOptions}
+        options={[{ label: "Otomatik (AI)", value: "" }, ...seasonOptions]}
         onChange={(event: ChangeEvent<HTMLSelectElement>) =>
           setState((prev: FormState) => ({ ...prev, season: event.target.value }))
         }
-        required
       />
       <Select
         label="Formalite"
         value={state.formality}
-        options={formalityOptions}
+        options={[{ label: "Otomatik (AI)", value: "" }, ...formalityOptions]}
         onChange={(event: ChangeEvent<HTMLSelectElement>) =>
           setState((prev: FormState) => ({ ...prev, formality: event.target.value }))
         }
-        required
       />
       <TextArea
         label="Notlar"
@@ -164,6 +168,9 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
           setFile(selectedFile);
         }}
       />
+      <p className="text-xs text-slate-500">
+        Alanları boş bırakırsan yapay zeka fotoğraftan kategori, renk, sezon ve formaliteyi otomatik belirler.
+      </p>
       {error && <p className="text-sm text-red-500">{error}</p>}
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Kaydediliyor" : "Kıyafet ekle"}

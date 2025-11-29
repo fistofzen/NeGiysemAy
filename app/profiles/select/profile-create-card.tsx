@@ -16,7 +16,7 @@ export const ProfileCreateCard = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profileId }),
       });
-    } catch (err) {
+    } catch {
       setError("Profil aktif hale getirilemedi");
     } finally {
       router.push("/dashboard");

@@ -105,6 +105,7 @@ export const generateAndStoreOutfits = async ({
     formality: item.formality,
     imageUrl: item.imageUrl,
   }));
+  const availableClothItemIds = new Set(wardrobe.map((item) => item.id));
 
   const suggestions = await aiService.generateOutfits({
     profile: {
@@ -151,13 +152,49 @@ export const generateAndStoreOutfits = async ({
       await prisma.outfitItem.deleteMany({ where: { outfitId: outfit.id } });
 
       if (suggestion.items.length > 0) {
-        await prisma.outfitItem.createMany({
-          data: suggestion.items.map((item) => ({
-            outfitId: outfit.id,
-            clothItemId: item.clothItemId,
-            role: resolveRole(item.role),
-          })),
-        });
+        const seenRoles = new Set<OutfitItemRole>();
+
+        const createPayload = suggestion.items
+          .map((item) => {
+            const clothItemId = typeof item.clothItemId === "string" ? item.clothItemId.trim() : "";
+            if (!clothItemId || !availableClothItemIds.has(clothItemId)) {
+              console.warn("Kıyafet önerisinde geçersiz clothItemId atlandı", {
+                clothItemId,
+                availableCount: availableClothItemIds.size,
+              });
+              return null;
+            }
+
+            const role = resolveRole(item.role);
+            if (role === OutfitItemRole.DRESS) {
+              if (
+                seenRoles.has(OutfitItemRole.DRESS) ||
+                seenRoles.has(OutfitItemRole.TOP) ||
+                seenRoles.has(OutfitItemRole.BOTTOM)
+              ) {
+                return null;
+              }
+              seenRoles.add(OutfitItemRole.DRESS);
+              seenRoles.add(OutfitItemRole.TOP);
+              seenRoles.add(OutfitItemRole.BOTTOM);
+            } else {
+              if (seenRoles.has(role)) {
+                return null;
+              }
+              seenRoles.add(role);
+            }
+
+            return {
+              outfitId: outfit.id,
+              clothItemId,
+              role,
+            };
+          })
+          .filter((value): value is { outfitId: string; clothItemId: string; role: OutfitItemRole } => value !== null);
+
+        if (createPayload.length > 0) {
+          await prisma.outfitItem.createMany({ data: createPayload });
+        }
       }
 
       const outfitWithItems = await prisma.outfit.findUnique({

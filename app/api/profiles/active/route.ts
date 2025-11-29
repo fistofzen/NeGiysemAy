@@ -18,7 +18,7 @@ export const POST = async (request: Request) => {
   try {
     await setActiveProfile(session.userId, profileId);
     return NextResponse.json({ profileId }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Profil atanamadı" }, { status: 403 });
   }
 };
