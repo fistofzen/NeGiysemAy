@@ -229,7 +229,7 @@ export const generateAndStoreOutfits = async ({
       role: item.role,
       category: item.clothItem?.category ?? "",
       color: item.clothItem?.color ?? "",
-      imageUrl: item.clothItem?.imageUrl ?? "/placeholder.png",
+      imageUrl: item.clothItem?.imageUrl ?? null,
     })),
   }));
 };
