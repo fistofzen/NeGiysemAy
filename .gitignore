@@ -131,3 +131,5 @@ test-results.xml
 
 # Turbo cache
 .turbo/ 
+
+credentials/
