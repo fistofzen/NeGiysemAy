@@ -50,6 +50,7 @@ const requestGenerativeTryOn = async (
   params: {
     profileId: string;
     clothItemId?: string;
+    clothItemIds?: string[]; // Tüm kombin parçaları
     modelImageUrl: string;
     garmentPrompt?: string;
   }
@@ -62,14 +63,15 @@ const requestGenerativeTryOn = async (
 
   if (!response.ok) {
     const errorPayload = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorPayload?.message ?? "Generatif try-on isteği başarısız");
+    throw new Error(errorPayload?.message ?? "Virtual try-on isteği başarısız");
   }
 
-  return (await response.json()) as { imageUrl: string; prompt: string };
+  return (await response.json()) as { imageUrl: string; prompt?: string };
 };
 
 export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [useFullOutfit, setUseFullOutfit] = useState(true); // Tüm kombini kullan
   const [selectedClothItemId, setSelectedClothItemId] = useState<string>(items[0]?.clothItemId ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
   const [modelPreview, setModelPreview] = useState<string | null>(null);
@@ -152,14 +154,18 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     }
 
     try {
+      // Tüm kombin parçalarını gönder
+      const allClothItemIds = items.map(item => item.clothItemId);
+      
       const payload = await requestGenerativeTryOn({
         profileId,
-        clothItemId: selectedClothItemId || undefined,
+        clothItemIds: useFullOutfit ? allClothItemIds : undefined,
+        clothItemId: !useFullOutfit ? selectedClothItemId || undefined : undefined,
         modelImageUrl,
         garmentPrompt: customPrompt || undefined,
       });
       setResultUrl(payload.imageUrl);
-      setResultPrompt(payload.prompt);
+      setResultPrompt(payload.prompt ?? null);
     } catch (submissionError) {
       console.error(submissionError);
       setError((submissionError as Error).message ?? "İstek başarısız oldu");
@@ -176,8 +182,10 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">AI konsept render</p>
-          <p className="text-sm text-slate-600">Referans fotoğrafı yükleyip gpt-image-1 ile hızlı ön izleme al.</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500">AI Virtual Try-On</p>
+          <p className="text-sm text-slate-600">
+            Google Vertex AI ile gerçekçi kombin görseli (ardışık giydirme)
+          </p>
         </div>
         <Button variant="subtle" onClick={() => setIsOpen((prev) => !prev)}>
           {isOpen ? "Formu gizle" : "AI görsel oluştur"}
@@ -186,7 +194,26 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
 
       {isOpen && (
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-          {options.length > 1 && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={useFullOutfit}
+                onChange={(e) => setUseFullOutfit(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span className="text-sm font-medium text-slate-700">
+                Tüm kombini ardışık giydir ({items.length} parça)
+              </span>
+            </label>
+            <p className="text-xs text-slate-500">
+              {useFullOutfit 
+                ? `Her kıyafet sırayla giydirilecek (${items.length} adımda). Her adımın sonucu bir sonraki için model olacak.` 
+                : "Sadece seçilen bir parça Google Vertex AI ile gerçekçi şekilde giydirilecek"}
+            </p>
+          </div>
+
+          {!useFullOutfit && options.length > 1 && (
             <Select
               label="Kıyafet parçası"
               value={selectedClothItemId}

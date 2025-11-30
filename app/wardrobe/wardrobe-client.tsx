@@ -102,77 +102,69 @@ export const WardrobeClient = ({
   };
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-      <aside className="space-y-6">
-        <Card className="space-y-3 p-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">Aktif profil</p>
-            <p className="text-lg font-semibold text-slate-800">{profileName}</p>
-          </div>
-          <p className="text-sm text-slate-600">
-            Toplam <span className="font-semibold text-slate-900">{totalCount}</span> parça kayıtlı.
+    <div className="space-y-6">
+      {/* Header */}
+      <header className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-slate-900">Dolabım</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            <span className="font-semibold">{profileName}</span> · {filteredCount} / {totalCount} parça
           </p>
-        </Card>
+        </div>
+      </header>
 
-        <Card className="space-y-4 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">Filtreler</h2>
-            <Button type="button" variant="subtle" onClick={resetFilters}>
-              Sıfırla
-            </Button>
-          </div>
-          <Select
-            label="Kategori"
-            value={filters.category}
-            onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))}
-            options={[{ label: "Tümü", value: ALL }, ...categoryOptions]}
-          />
-          <Select
-            label="Sezon"
-            value={filters.season}
-            onChange={(event) => setFilters((prev) => ({ ...prev, season: event.target.value }))}
-            options={[{ label: "Tümü", value: ALL }, ...seasonOptions]}
-          />
-          <Select
-            label="Formalite"
-            value={filters.formality}
-            onChange={(event) => setFilters((prev) => ({ ...prev, formality: event.target.value }))}
-            options={[{ label: "Tümü", value: ALL }, ...formalityOptions]}
-          />
-          <Input
-            label="Ara"
-            value={filters.query}
-            placeholder="Renk, materyal veya not ara"
-            onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-          />
-        </Card>
-
-        <Card className="space-y-4 p-4">
-          <div>
+      {/* Add Form - Compact */}
+      <Card className="p-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-4">
             <h2 className="text-sm font-semibold text-slate-900">Yeni kıyafet ekle</h2>
-            <p className="text-xs text-slate-500">Görsel yükleyebilir veya boş bırakarak sahte görsel kullanabilirsiniz.</p>
           </div>
-          <ClothItemForm profileId={profileId} />
-        </Card>
-      </aside>
+          <ClothItemForm profileId={profileId} compact />
+        </div>
+      </Card>
 
-      <section className="space-y-4">
-        <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Dolabım</h1>
-            <p className="text-sm text-slate-600">
-              Filtreleri kullanarak parça koleksiyonunu yönet.
-            </p>
-          </div>
-          <div className="text-sm text-slate-500">
-            {filteredCount} / {totalCount} parça gösteriliyor
-          </div>
-        </header>
+      {/* Filters & Content */}
+      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+        <aside className="space-y-4">
+          <Card className="space-y-4 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Filtreler</h2>
+              <Button type="button" variant="subtle" onClick={resetFilters}>
+                Sıfırla
+              </Button>
+            </div>
+            <Select
+              label="Kategori"
+              value={filters.category}
+              onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value }))}
+              options={[{ label: "Tümü", value: ALL }, ...categoryOptions]}
+            />
+            <Select
+              label="Sezon"
+              value={filters.season}
+              onChange={(event) => setFilters((prev) => ({ ...prev, season: event.target.value }))}
+              options={[{ label: "Tümü", value: ALL }, ...seasonOptions]}
+            />
+            <Select
+              label="Formalite"
+              value={filters.formality}
+              onChange={(event) => setFilters((prev) => ({ ...prev, formality: event.target.value }))}
+              options={[{ label: "Tümü", value: ALL }, ...formalityOptions]}
+            />
+            <Input
+              label="Ara"
+              value={filters.query}
+              placeholder="Renk, materyal veya not ara"
+              onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+            />
+          </Card>
+        </aside>
 
-        {actionError && <p className="text-sm text-red-500">{actionError}</p>}
-
-        <WardrobeGrid items={filteredItems} onDelete={handleDelete} deletingId={deletingId} />
-      </section>
+        <section className="space-y-4">
+          {actionError && <p className="text-sm text-red-500">{actionError}</p>}
+          <WardrobeGrid items={filteredItems} onDelete={handleDelete} deletingId={deletingId} />
+        </section>
+      </div>
     </div>
   );
 };

@@ -150,15 +150,18 @@ export type GenerativeTryOnRequest = {
   profileId: string;
   modelImageUrl: string;
   clothItemId?: string;
+  clothItemIds?: string[]; // Çoklu kıyafet parçaları için
   garmentPrompt?: string;
 };
 
 export const generateGenerativeTryOn = async (
   request: GenerativeTryOnRequest
 ): Promise<{ imageUrl: string; prompt: string }> => {
-  const { profileId, clothItemId, modelImageUrl, garmentPrompt } = request;
+  const { profileId, clothItemId, clothItemIds, modelImageUrl, garmentPrompt } = request;
 
-  let clothItemSummary: string | null = null;
+  const clothItemSummaries: string[] = [];
+  
+  // Tek bir clothItemId varsa
   if (clothItemId) {
     const clothItem = await prisma.clothItem.findFirst({
       where: { id: clothItemId, profileId },
@@ -172,25 +175,53 @@ export const generateGenerativeTryOn = async (
       },
     });
 
-    if (!clothItem) {
-      throw new Error("Cloth item not found for generative try-on");
+    if (clothItem) {
+      clothItemSummaries.push(buildGarmentSummary(clothItem));
     }
+  }
 
-    clothItemSummary = buildGarmentSummary(clothItem);
+  // Birden fazla clothItemIds varsa (kombin için)
+  if (clothItemIds && clothItemIds.length > 0) {
+    const clothItems = await prisma.clothItem.findMany({
+      where: { 
+        id: { in: clothItemIds },
+        profileId 
+      },
+      select: {
+        id: true,
+        category: true,
+        color: true,
+        formality: true,
+        season: true,
+        material: true,
+        notes: true,
+      },
+    });
+
+    for (const item of clothItems) {
+      clothItemSummaries.push(buildGarmentSummary(item));
+    }
   }
 
   const modelDescription = await describeModelImage(modelImageUrl);
 
-  const prompt = `Create a photorealistic full-body fashion photo. ${modelDescription}. The person should be wearing ${
-    garmentPrompt ?? clothItemSummary ?? "a stylish outfit"
-  }. Keep the background minimal and tasteful. Preserve the person's pose and perspective.`;
+  // Tüm kıyafet parçalarını birleştir
+  const outfitDescription = clothItemSummaries.length > 0
+    ? clothItemSummaries.join(", ")
+    : (garmentPrompt ?? "a stylish outfit");
+
+  const prompt = `Create a photorealistic full-body fashion photo. ${modelDescription}. The person should be wearing ${outfitDescription}. Keep the background minimal and tasteful. Preserve the person's pose and perspective. Show the complete outfit including all garments mentioned.`;
 
   const buffer = await generateImage(prompt);
+
+  const fileNameBase = clothItemIds && clothItemIds.length > 0
+    ? clothItemIds.join("-")
+    : clothItemId;
 
   const imageUrl = await saveBuffer(buffer, {
     profileId,
     folder: "generative-try-on",
-    fileName: clothItemId ? `${clothItemId}-generative.png` : undefined,
+    fileName: fileNameBase ? `${fileNameBase}-generative.png` : undefined,
     mimeType: "image/png",
   });
 

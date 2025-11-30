@@ -16,7 +16,7 @@ export const POST = async (request: Request) => {
   }
 
   try {
-    const { clothItemId, garmentImageUrl, profileId: explicitProfileId, modelImageUrl, providerHints } = json;
+    const { clothItemId, clothItemIds, garmentImageUrl, profileId: explicitProfileId, modelImageUrl, providerHints } = json;
 
     const profile = explicitProfileId
       ? await prisma.profile.findFirst({
@@ -27,6 +27,30 @@ export const POST = async (request: Request) => {
 
     if (!profile) {
       return NextResponse.json({ message: "Profil bulunamadı" }, { status: 404 });
+    }
+
+    // Handle multiple items with sequential processing
+    if (clothItemIds && clothItemIds.length > 1) {
+      const result = await virtualTryOnService.generate({
+        clothItemIds,
+        modelImageUrl,
+        profileId: profile.id,
+        providerHints,
+      });
+
+      if (!result) {
+        return NextResponse.json({
+          message: "VTON yapılandırması eksik",
+          status: "skipped",
+        });
+      }
+
+      return NextResponse.json({
+        message: "Başarılı (Ardışık giydirme)",
+        imageUrl: result.imageUrl,
+        provider: result.provider,
+        metadata: result.metadata,
+      });
     }
 
     let finalGarmentUrl = garmentImageUrl ?? undefined;

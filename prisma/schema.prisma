@@ -15,6 +15,7 @@ enum ClothCategory {
   SHOES
   SOCKS
   ACCESSORY
+  HAT
 }
 
 enum ClothSeason {
@@ -47,6 +48,7 @@ enum OutfitItemRole {
   DRESS
   SOCKS
   ACCESSORY
+  HAT
   OTHER
 }
 

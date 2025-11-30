@@ -8,13 +8,14 @@ import { Select } from "@/components/ui/select";
 import { TextArea } from "@/components/ui/textarea";
 
 const categoryOptions = [
-  { label: "Üst", value: "TOP" },
-  { label: "Alt", value: "BOTTOM" },
+  { label: "Üst (Tişört, gömlek, bluz)", value: "TOP" },
+  { label: "Alt (Pantolon, etek, şort)", value: "BOTTOM" },
   { label: "Elbise", value: "DRESS" },
-  { label: "Dış giyim", value: "OUTERWEAR" },
+  { label: "Dış giyim (Mont, ceket, hırka)", value: "OUTERWEAR" },
   { label: "Ayakkabı", value: "SHOES" },
   { label: "Çorap", value: "SOCKS" },
-  { label: "Aksesuar", value: "ACCESSORY" },
+  { label: "Aksesuar (Çanta, takı, kemer)", value: "ACCESSORY" },
+  { label: "Şapka", value: "HAT" },
 ];
 
 const seasonOptions = [
@@ -35,6 +36,7 @@ const formalityOptions = [
 type ClothItemFormProps = {
   profileId: string;
   onSuccess?: () => void;
+  compact?: boolean;
 };
 
 type FormState = {
@@ -55,7 +57,7 @@ const initialState: FormState = {
   notes: "",
 };
 
-export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
+export const ClothItemForm = ({ profileId, onSuccess, compact = false }: ClothItemFormProps) => {
   const [state, setState] = useState<FormState>(initialState);
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +113,44 @@ export const ClothItemForm = ({ profileId, onSuccess }: ClothItemFormProps) => {
       setIsSubmitting(false);
     }
   };
+
+  if (compact) {
+    return (
+      <form className="contents" onSubmit={handleSubmit}>
+        <Input
+          type="file"
+          label="Görsel"
+          accept="image/*"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            const selectedFile = event.target.files?.item(0) ?? null;
+            setFile(selectedFile);
+          }}
+        />
+        <Select
+          label="Kategori"
+          value={state.category}
+          options={[{ label: "Otomatik (AI)", value: "" }, ...categoryOptions]}
+          onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+            setState((prev: FormState) => ({ ...prev, category: event.target.value }))
+          }
+        />
+        <Input
+          label="Renk"
+          value={state.color}
+          placeholder="AI tarafından belirlenecek"
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setState((prev: FormState) => ({ ...prev, color: event.target.value }))
+          }
+        />
+        <div className="flex items-end">
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? "Ekleniyor..." : "Ekle"}
+          </Button>
+        </div>
+        {error && <p className="text-sm text-red-500 lg:col-span-4">{error}</p>}
+      </form>
+    );
+  }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>

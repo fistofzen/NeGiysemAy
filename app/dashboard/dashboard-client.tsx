@@ -98,6 +98,20 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
     return selectedProfile?.outfits.find((outfit: DashboardProfile["outfits"][number]) => outfit.date === todayKey);
   }, [selectedProfile, todayKey]);
 
+  const handleDeleteOutfit = (outfitId: string) => {
+    setProfiles((prev: DashboardProfile[]) =>
+      prev.map((profile: DashboardProfile) =>
+        profile.id === selectedProfile?.id
+          ? {
+              ...profile,
+              outfits: profile.outfits.filter((outfit) => outfit.id !== outfitId),
+            }
+          : profile
+      )
+    );
+    router.refresh();
+  };
+
   const handleGenerate = async () => {
     if (!selectedProfile) {
       return;
@@ -223,12 +237,14 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
               <div className="p-6">
                 {todayOutfit ? (
                   <OutfitCard
+                    id={todayOutfit.id}
                     date={todayOutfit.date}
                     notes={todayOutfit.notes}
                     weatherSummary={todayOutfit.weatherSummary}
                     items={todayOutfit.items}
                     profileId={selectedProfile?.id}
                     enableGenerative
+                    onDelete={() => handleDeleteOutfit(todayOutfit.id)}
                   />
                 ) : (
                   <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
@@ -284,12 +300,14 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
                 {outfitsSorted.map((outfit) => (
                   <OutfitCard
                     key={outfit.id}
+                    id={outfit.id}
                     date={outfit.date}
                     notes={outfit.notes}
                     weatherSummary={outfit.weatherSummary}
                     items={outfit.items}
                     profileId={selectedProfile?.id}
                     enableGenerative
+                    onDelete={() => handleDeleteOutfit(outfit.id)}
                   />
                 ))}
               </div>

@@ -58,6 +58,7 @@ const outfitRoleMap: Record<string, OutfitItemRole> = {
   ACCESSORY: OutfitItemRole.ACCESSORY,
   SOCKS: OutfitItemRole.SOCKS,
   DRESS: OutfitItemRole.DRESS,
+  HAT: OutfitItemRole.HAT,
   OTHER: OutfitItemRole.OTHER,
 };
 
