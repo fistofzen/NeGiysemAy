@@ -41,5 +41,15 @@ export const POST = async (request: Request) => {
   const origin = request.headers.get("origin") ?? new URL(request.url).origin;
   const absoluteUrl = url.startsWith("http") ? url : new URL(url, origin).toString();
 
+  // Save photo URL to profile
+  await prisma.profile.update({
+    where: { id: profile.id },
+    data: {
+      customModelPhotos: {
+        push: url,
+      },
+    },
+  });
+
   return NextResponse.json({ url, absoluteUrl }, { status: 201 });
 };

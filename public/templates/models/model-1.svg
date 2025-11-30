@@ -1,0 +1,8 @@
+<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="600" fill="#f0f0f0"/>
+  <circle cx="200" cy="150" r="60" fill="#ddd"/>
+  <rect x="140" y="220" width="120" height="180" rx="10" fill="#ddd"/>
+  <rect x="140" y="410" width="50" height="180" rx="5" fill="#ddd"/>
+  <rect x="210" y="410" width="50" height="180" rx="5" fill="#ddd"/>
+  <text x="200" y="310" font-family="Arial" font-size="16" fill="#999" text-anchor="middle">Model 1</text>
+</svg>

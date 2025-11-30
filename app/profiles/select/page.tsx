@@ -19,6 +19,7 @@ const ProfilesSelectPage = async () => {
     select: {
       id: true,
       name: true,
+      customModelPhotos: true,
     },
   });
 

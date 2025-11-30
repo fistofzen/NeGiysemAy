@@ -73,18 +73,19 @@ model Session {
 }
 
 model Profile {
-  id               String      @id @default(cuid())
-  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  name             String
-  ageRange         String?
-  gender           String?
-  stylePreferences String[]
-  locationCity     String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  clothItems       ClothItem[]
-  outfits          Outfit[]
+  id                 String      @id @default(cuid())
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  name               String
+  ageRange           String?
+  gender             String?
+  stylePreferences   String[]
+  locationCity       String?
+  customModelPhotos  String[]    @default([])
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  clothItems         ClothItem[]
+  outfits            Outfit[]
 
   @@index([userId])
 }
