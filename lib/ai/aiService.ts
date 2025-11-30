@@ -65,6 +65,268 @@ const ROLE_OPTIONS: OutfitRole[] = [
   "OTHER",
 ];
 
+const SEASON_VALUES = ["SPRING", "SUMMER", "AUTUMN", "WINTER", "ALL_SEASONS"] as const;
+type SeasonValue = (typeof SEASON_VALUES)[number];
+
+const FORMALITY_VALUES = ["CASUAL", "OFFICE", "SPORT", "SPECIAL"] as const;
+type FormalityValue = (typeof FORMALITY_VALUES)[number];
+
+const SCENARIO_FORMALITY: Record<string, FormalityValue> = {
+  daily: "CASUAL",
+  office: "OFFICE",
+  travel: "CASUAL",
+  special: "SPECIAL",
+};
+
+const FORMALITY_COMPATIBILITY: Record<FormalityValue, Partial<Record<FormalityValue, number>>> = {
+  CASUAL: { CASUAL: 6, SPORT: 4, SPECIAL: 1, OFFICE: 2 },
+  OFFICE: { OFFICE: 6, CASUAL: 3, SPECIAL: 4 },
+  SPORT: { SPORT: 6, CASUAL: 4 },
+  SPECIAL: { SPECIAL: 6, CASUAL: 2, OFFICE: 3 },
+};
+
+const normalizeSeason = (value: string | undefined | null): SeasonValue | "ALL_SEASONS" | null => {
+  if (!value) {
+    return null;
+  }
+  const upper = value.toUpperCase();
+  if (SEASON_VALUES.includes(upper as SeasonValue)) {
+    return upper as SeasonValue;
+  }
+  if (upper === "ALL_SEASONS") {
+    return "ALL_SEASONS";
+  }
+  return null;
+};
+
+const normalizeFormality = (value: string | undefined | null): FormalityValue | null => {
+  if (!value) {
+    return null;
+  }
+  const upper = value.toUpperCase();
+  if (FORMALITY_VALUES.includes(upper as FormalityValue)) {
+    return upper as FormalityValue;
+  }
+  return null;
+};
+
+const inferSeasonFromDate = (date: Date): SeasonValue => {
+  const month = date.getUTCMonth() + 1;
+  if (month >= 3 && month <= 5) return "SPRING";
+  if (month >= 6 && month <= 8) return "SUMMER";
+  if (month >= 9 && month <= 11) return "AUTUMN";
+  return "WINTER";
+};
+
+const inferSeasonFromWeather = (weather: WeatherConditions | undefined, date: Date): SeasonValue => {
+  if (!weather) {
+    return inferSeasonFromDate(date);
+  }
+  const avgTemp = (weather.temperatureMinC + weather.temperatureMaxC) / 2;
+  if (avgTemp <= 6) {
+    return "WINTER";
+  }
+  if (avgTemp <= 15) {
+    return "AUTUMN";
+  }
+  if (avgTemp >= 24) {
+    return "SUMMER";
+  }
+  return "SPRING";
+};
+
+const seasonCompatibilityScore = (itemSeasonRaw: string, targetSeason: SeasonValue): number => {
+  const itemSeason = normalizeSeason(itemSeasonRaw);
+  if (!itemSeason) {
+    return 0;
+  }
+  if (itemSeason === "ALL_SEASONS") {
+    return 3;
+  }
+  if (itemSeason === targetSeason) {
+    return 5;
+  }
+  const adjacency: Record<SeasonValue, SeasonValue[]> = {
+    SPRING: ["SUMMER", "WINTER"],
+    SUMMER: ["SPRING", "AUTUMN"],
+    AUTUMN: ["SUMMER", "WINTER"],
+    WINTER: ["AUTUMN", "SPRING"],
+    ALL_SEASONS: ["SPRING", "SUMMER", "AUTUMN", "WINTER"],
+  };
+  return adjacency[targetSeason]?.includes(itemSeason) ? 2 : -4;
+};
+
+const formalityCompatibilityScore = (
+  itemFormalityRaw: string,
+  desiredFormality: FormalityValue
+): number => {
+  const itemFormality = normalizeFormality(itemFormalityRaw);
+  if (!itemFormality) {
+    return 0;
+  }
+  return FORMALITY_COMPATIBILITY[desiredFormality]?.[itemFormality] ?? -3;
+};
+
+type RuleBasedContext = {
+  wardrobe: WardrobeItem[];
+  desiredSeason: SeasonValue;
+  desiredFormality: FormalityValue;
+  weather?: WeatherConditions;
+};
+
+const buildRuleBasedOutfit = (
+  context: RuleBasedContext,
+  options: { enforceOuterwear?: boolean; encourageAccessories?: boolean } = {}
+): AIOutfitSuggestionItem[] => {
+  const used = new Set<string>();
+  const { wardrobe, desiredFormality, desiredSeason, weather } = context;
+  const results: AIOutfitSuggestionItem[] = [];
+
+  const pickBest = (categories: string[], role: OutfitRole): WardrobeItem | null => {
+    let best: WardrobeItem | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const item of wardrobe) {
+      if (!categories.includes(item.category) || used.has(item.id)) {
+        continue;
+      }
+      const seasonScore = seasonCompatibilityScore(item.season, desiredSeason);
+      const formalityScore = formalityCompatibilityScore(item.formality, desiredFormality);
+      let score = seasonScore + formalityScore;
+
+      if (role === "OUTERWEAR" && weather) {
+        if (weather.temperatureMaxC < 18 || weather.precipitationChance > 0.4) {
+          score += 3;
+        } else {
+          score -= 2;
+        }
+      }
+
+      if (role === "ACCESSORY" && !options.encourageAccessories) {
+        score -= 1;
+      }
+
+      if (score > bestScore) {
+        best = item;
+        bestScore = score;
+      }
+    }
+
+    if (best) {
+      used.add(best.id);
+    }
+    return best;
+  };
+
+  const tryAdd = (categories: string[], role: OutfitRole) => {
+    const item = pickBest(categories, role);
+    if (item) {
+      results.push({ clothItemId: item.id, role });
+      return item;
+    }
+    return null;
+  };
+
+  const dress = tryAdd(["DRESS"], "DRESS");
+
+  if (!dress) {
+    let top = tryAdd(["TOP"], "TOP");
+    if (!top) {
+      top = tryAdd(["OUTERWEAR"], "TOP");
+    }
+    const bottom = tryAdd(["BOTTOM"], "BOTTOM");
+
+    if (!top && bottom) {
+      // fallback: use bottom as main piece but still keep outfit meaningful by adding another layer
+      tryAdd(["OUTERWEAR"], "OUTERWEAR");
+    }
+  }
+
+  const needOuterwear =
+    options.enforceOuterwear || (weather ? weather.temperatureMaxC < 16 || weather.precipitationChance > 0.5 : false);
+  if (needOuterwear) {
+    tryAdd(["OUTERWEAR"], "OUTERWEAR");
+  }
+
+  const shoes = tryAdd(["SHOES"], "SHOES");
+  if (shoes && weather && weather.temperatureMinC < 18) {
+    tryAdd(["SOCKS"], "SOCKS");
+  }
+
+  if (options.encourageAccessories) {
+    tryAdd(["ACCESSORY"], "ACCESSORY");
+  }
+
+  if (results.length === 0 && wardrobe.length > 0) {
+    results.push({ clothItemId: wardrobe[0].id, role: "OTHER" });
+  }
+
+  return results;
+};
+
+const resolveDesiredFormality = (scenario: string): FormalityValue => {
+  const key = scenario.toLowerCase();
+  return SCENARIO_FORMALITY[key] ?? "CASUAL";
+};
+
+const shouldEncourageAccessories = (scenario: string) => scenario.toLowerCase() === "special";
+
+const composeOutfitNote = (
+  weather: WeatherConditions | undefined,
+  desiredFormality: FormalityValue,
+  desiredSeason: SeasonValue
+): string => {
+  const parts: string[] = [];
+  parts.push(`Tarz: ${desiredFormality.toLowerCase()}`);
+  if (weather) {
+    parts.push(
+      `Sıcaklık ${Math.round(weather.temperatureMinC)}-${Math.round(weather.temperatureMaxC)}°C, ` +
+        `yağış olasılığı %${Math.round(weather.precipitationChance * 100)}`
+    );
+  }
+  parts.push(`Sezon önerisi: ${desiredSeason.toLowerCase()}`);
+  return parts.join(" · ");
+};
+
+const mergeWithRuleBasedFallback = (
+  rawItems: AIOutfitSuggestionItem[] | undefined,
+  context: RuleBasedContext,
+  options: { enforceOuterwear?: boolean; encourageAccessories?: boolean } = {}
+): AIOutfitSuggestionItem[] => {
+  const availableIds = new Set(context.wardrobe.map((item) => item.id));
+  const normalized: AIOutfitSuggestionItem[] = [];
+  const usedRoles = new Set<OutfitRole>();
+  const usedIds = new Set<string>();
+
+  for (const entry of rawItems ?? []) {
+    const id = typeof entry.clothItemId === "string" ? entry.clothItemId.trim() : "";
+    if (!id || !availableIds.has(id) || usedIds.has(id)) {
+      continue;
+    }
+    const role = ROLE_OPTIONS.includes(entry.role as OutfitRole) ? (entry.role as OutfitRole) : "OTHER";
+    if (role !== "OTHER" && usedRoles.has(role)) {
+      continue;
+    }
+    usedRoles.add(role);
+    usedIds.add(id);
+    normalized.push({ clothItemId: id, role });
+  }
+
+  const baseline = buildRuleBasedOutfit(context, options);
+  for (const candidate of baseline) {
+    if (usedIds.has(candidate.clothItemId)) {
+      continue;
+    }
+    if (candidate.role !== "OTHER" && usedRoles.has(candidate.role)) {
+      continue;
+    }
+    usedIds.add(candidate.clothItemId);
+    usedRoles.add(candidate.role);
+    normalized.push(candidate);
+  }
+
+  return normalized;
+};
+
 const formatWardrobe = (wardrobe: WardrobeItem[]): string => {
   return wardrobe
     .map(
@@ -119,91 +381,38 @@ const buildPrompt = async (
   return { prompt, weatherByDate };
 };
 
-const selectItemFactory = (wardrobe: WardrobeItem[]) => {
-  const grouped = wardrobe.reduce<Record<string, WardrobeItem[]>>((acc, item) => {
-    acc[item.category] = acc[item.category] ?? [];
-    acc[item.category].push(item);
-    return acc;
-  }, {});
-
-  const pointers: Record<string, number> = {};
-
-  return (categories: string[]): WardrobeItem | null => {
-    for (const category of categories) {
-      const items = grouped[category];
-      if (!items || items.length === 0) {
-        continue;
-      }
-      const pointer = pointers[category] ?? 0;
-      const item = items[pointer % items.length];
-      pointers[category] = pointer + 1;
-      return item;
-    }
-    return null;
-  };
-};
-
 class MockAIService implements AIService {
   async generateOutfits(request: OutfitSuggestionRequest): Promise<AIOutfitSuggestion[]> {
-    const { startDate, endDate, wardrobe } = request;
+    const { startDate, endDate, wardrobe, scenario } = request;
     const { prompt, weatherByDate } = await buildPrompt(request);
 
     console.info("AI prompt (mock)", prompt);
-
-    const takeItem = selectItemFactory(wardrobe);
     const effectiveEnd = endDate ?? startDate;
     const suggestions: AIOutfitSuggestion[] = [];
     let cursor = new Date(startDate);
 
     while (cursor <= effectiveEnd) {
       const dateKey = format(cursor, "yyyy-MM-dd");
-      const items: AIOutfitSuggestionItem[] = [];
-
-      const topItem = takeItem(["TOP", "DRESS"]);
-      if (topItem) {
-        items.push({
-          clothItemId: topItem.id,
-          role: topItem.category === "DRESS" ? "DRESS" : "TOP",
-        });
-      }
-
-      const needsBottom = !topItem || topItem.category !== "DRESS";
-      if (needsBottom) {
-        const bottomItem = takeItem(["BOTTOM"]);
-        if (bottomItem) {
-          items.push({ clothItemId: bottomItem.id, role: "BOTTOM" });
+      const weather = weatherByDate[dateKey];
+      const desiredSeason = inferSeasonFromWeather(weather, cursor);
+      const desiredFormality = resolveDesiredFormality(scenario);
+      const items = buildRuleBasedOutfit(
+        {
+          wardrobe,
+          desiredFormality,
+          desiredSeason,
+          weather,
+        },
+        {
+          encourageAccessories: shouldEncourageAccessories(scenario),
         }
-      }
-
-      const shoes = takeItem(["SHOES"]);
-      if (shoes) {
-        items.push({ clothItemId: shoes.id, role: "SHOES" });
-      }
-
-      const socks = takeItem(["SOCKS"]);
-      if (socks) {
-        items.push({ clothItemId: socks.id, role: "SOCKS" });
-      }
-
-      const outerwear = takeItem(["OUTERWEAR"]);
-      if (outerwear) {
-        items.push({ clothItemId: outerwear.id, role: "OUTERWEAR" });
-      }
-
-      const accessory = takeItem(["ACCESSORY"]);
-      if (accessory) {
-        items.push({ clothItemId: accessory.id, role: "ACCESSORY" });
-      }
-
-      if (items.length === 0 && wardrobe[0]) {
-        items.push({ clothItemId: wardrobe[0].id, role: "OTHER" });
-      }
+      );
 
       suggestions.push({
         date: dateKey,
         items,
-        notes: "Hava durumuna göre katmanlı giyinmeyi unutma.",
-        weather: weatherByDate[dateKey],
+        notes: composeOutfitNote(weather, desiredFormality, desiredSeason),
+        weather,
       });
 
       cursor = addDays(cursor, 1);
@@ -298,12 +507,36 @@ class OpenAIService implements AIService {
         }>;
       };
 
-      return parsed.outfits.map((outfit) => ({
-        date: outfit.date,
-        notes: outfit.notes,
-        items: outfit.items,
-        weather: weatherByDate[outfit.date] ?? fallbackWeather,
-      }));
+      return parsed.outfits.map((outfit) => {
+        const desiredFormality = resolveDesiredFormality(request.scenario);
+        const dateValue = outfit.date ? new Date(outfit.date) : request.startDate;
+        const weather = weatherByDate[outfit.date] ?? fallbackWeather;
+        const desiredSeason = inferSeasonFromWeather(weather, dateValue);
+        const sanitizedItems = mergeWithRuleBasedFallback(
+          outfit.items,
+          {
+            wardrobe: request.wardrobe,
+            desiredFormality,
+            desiredSeason,
+            weather,
+          },
+          {
+            encourageAccessories: shouldEncourageAccessories(request.scenario),
+          }
+        );
+
+        const trimmedNotes = outfit.notes?.trim() ?? "";
+        const notes = trimmedNotes.length > 0
+          ? trimmedNotes
+          : composeOutfitNote(weather, desiredFormality, desiredSeason);
+
+        return {
+          date: outfit.date,
+          notes,
+          items: sanitizedItems,
+          weather,
+        };
+      });
     } catch (error) {
       console.error("OpenAI kombin oluşturma hatası", error);
       return fallbackService.generateOutfits(request);

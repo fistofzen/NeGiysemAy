@@ -4,6 +4,7 @@ import Image from "next/image";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
+import { GenerativeTryOnPanel } from "@/components/dashboard/generative-try-on-panel";
 
 export type OutfitItem = {
   id: string;
@@ -19,6 +20,8 @@ export type OutfitCardProps = {
   notes?: string | null;
   weatherSummary?: string | null;
   items: OutfitItem[];
+  profileId?: string;
+  enableGenerative?: boolean;
 };
 
 const roleLabels: Record<string, string> = {
@@ -32,7 +35,14 @@ const roleLabels: Record<string, string> = {
   OTHER: "Diğer",
 };
 
-export const OutfitCard = ({ date, notes, weatherSummary, items }: OutfitCardProps) => {
+export const OutfitCard = ({
+  date,
+  notes,
+  weatherSummary,
+  items,
+  profileId,
+  enableGenerative,
+}: OutfitCardProps) => {
   const formattedDate = format(new Date(date), "d MMMM yyyy EEEE", { locale: tr });
   return (
     <Card className="flex flex-col gap-4">
@@ -71,6 +81,9 @@ export const OutfitCard = ({ date, notes, weatherSummary, items }: OutfitCardPro
         ))}
       </div>
       {notes && <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-600">{notes}</p>}
+      {enableGenerative && profileId && (
+        <GenerativeTryOnPanel profileId={profileId} items={items} />
+      )}
     </Card>
   );
 };

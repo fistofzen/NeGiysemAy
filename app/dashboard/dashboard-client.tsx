@@ -201,6 +201,8 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
               notes={todayOutfit.notes}
               weatherSummary={todayOutfit.weatherSummary}
               items={todayOutfit.items}
+              profileId={selectedProfile?.id}
+              enableGenerative
             />
           ) : (
             <p className="text-sm text-slate-500">
@@ -226,7 +228,15 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {outfitsSorted.map((outfit) => (
-            <OutfitCard key={outfit.id} {...outfit} />
+            <OutfitCard
+              key={outfit.id}
+              date={outfit.date}
+              notes={outfit.notes}
+              weatherSummary={outfit.weatherSummary}
+              items={outfit.items}
+              profileId={selectedProfile?.id}
+              enableGenerative
+            />
           ))}
         </div>
       </section>
