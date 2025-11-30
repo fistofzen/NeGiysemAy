@@ -36,6 +36,10 @@ Production-ready MVP for a wardrobe management and AI-powered outfit suggestion 
        - `VERTEX_PUBLISHER` (default `google`)
        - `VERTEX_VIRTUAL_TRYON_MODEL` (default `imagen-virtual-try-on-preview-08-04`)
        - Provide service account credentials via `GOOGLE_APPLICATION_CREDENTIALS` or workload identity so the server can mint access tokens.
+   - (Optional) OAuth Social Login:
+       - `NEXT_PUBLIC_APP_URL` - Your app URL (e.g., `http://localhost:3000`)
+       - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` - Get from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+       - `INSTAGRAM_CLIENT_ID` and `INSTAGRAM_CLIENT_SECRET` - Get from [Meta for Developers](https://developers.facebook.com/apps/)
 3. Push the Prisma schema to your database:
    ```bash
    npx prisma db push
