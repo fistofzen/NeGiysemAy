@@ -283,45 +283,45 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
               <h3 className="mb-4 text-sm font-medium text-slate-900">Dolabım</h3>
               <WardrobeGrid items={selectedProfile?.wardrobe ?? []} />
             </div>
-          </div>
-        </div>
 
-        {/* History */}
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-            <h2 className="text-lg font-medium text-slate-900">Geçmiş Kombinler</h2>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-              {selectedProfile?.outfits.length ?? 0}
-            </span>
-          </div>
-          <div className="p-6">
-            {outfitsSorted.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {outfitsSorted.map((outfit) => (
-                  <OutfitCard
-                    key={outfit.id}
-                    id={outfit.id}
-                    date={outfit.date}
-                    notes={outfit.notes}
-                    weatherSummary={outfit.weatherSummary}
-                    items={outfit.items}
-                    profileId={selectedProfile?.id}
-                    enableGenerative
-                    onDelete={() => handleDeleteOutfit(outfit.id)}
-                  />
-                ))}
+            {/* History Sidebar */}
+            <div className="rounded-lg border border-slate-200 bg-white">
+              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                <h3 className="text-sm font-medium text-slate-900">Geçmiş Kombinler</h3>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  {selectedProfile?.outfits.length ?? 0}
+                </span>
               </div>
-            ) : (
-              <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
-                <div className="mb-3 rounded-full bg-slate-100 p-4">
-                  <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-900">Henüz geçmiş yok</p>
-                <p className="mt-1 text-sm text-slate-500">İlk kombinini oluştur</p>
+              <div className="max-h-[600px] overflow-y-auto p-4">
+                {outfitsSorted.length > 0 ? (
+                  <div className="space-y-4">
+                    {outfitsSorted.map((outfit) => (
+                      <OutfitCard
+                        key={outfit.id}
+                        id={outfit.id}
+                        date={outfit.date}
+                        notes={outfit.notes}
+                        weatherSummary={outfit.weatherSummary}
+                        items={outfit.items}
+                        profileId={selectedProfile?.id}
+                        enableGenerative
+                        onDelete={() => handleDeleteOutfit(outfit.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
+                    <div className="mb-3 rounded-full bg-slate-100 p-4">
+                      <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-slate-900">Henüz geçmiş yok</p>
+                    <p className="mt-1 text-sm text-slate-500">İlk kombinini oluştur</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

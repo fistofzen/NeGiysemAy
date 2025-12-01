@@ -130,14 +130,29 @@ export class VirtualTryOnService {
         profileId: request.profileId,
       },
       select: { id: true, imageUrl: true, category: true },
-      orderBy: [
-        { category: "asc" }, // Order by category for better layering
-      ],
     });
 
     if (clothItems.length === 0) {
       throw new Error("No valid cloth items found");
     }
+
+    // Katman sırasına göre sırala: önce alttan başla
+    const categoryOrder: Record<string, number> = {
+      BOTTOM: 1,
+      DRESS: 2,
+      TOP: 3,
+      OUTERWEAR: 4,
+      SHOES: 5,
+      SOCKS: 6,
+      ACCESSORY: 7,
+      HAT: 8,
+    };
+    
+    clothItems.sort((a: { category: string }, b: { category: string }) => {
+      const orderA = categoryOrder[a.category] ?? 99;
+      const orderB = categoryOrder[b.category] ?? 99;
+      return orderA - orderB;
+    });
 
     let currentModelUrl = request.modelImageUrl;
     let lastResult: VirtualTryOnResult | null = null;
@@ -318,8 +333,9 @@ export class VirtualTryOnService {
         },
       ],
       parameters: {
-        baseSteps: 20,
+        baseSteps: 50, // Daha yüksek kalite için artırıldı (varsayılan 20)
         sampleCount: 1,
+        guidanceScale: 7.5, // Ürün uyumluluğu için rehberlik skoru
         ...(parameterOverrides ?? {}),
       },
     };
