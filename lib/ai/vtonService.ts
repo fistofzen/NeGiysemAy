@@ -4,10 +4,13 @@ import { saveBuffer } from "@/lib/storage/storage";
 import { buildVtonEndpoint, getAccessToken } from "@/lib/google/vertexClient";
 
 export type VirtualTryOnRequest = {
-  garmentImageUrl: string;
+
+  garmentImageUrl?: string;
   modelImageUrl: string;
   profileId?: string;
   clothItemId?: string;
+  clothItemIds?: string[];
+
   providerHints?: Record<string, unknown>;
 };
 
@@ -97,6 +100,14 @@ const loadImageBuffer = async (imageUrl: string): Promise<{ buffer: Buffer; mime
 export class VirtualTryOnService {
   async generate(request: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
     console.log(`Using VTON provider: ${PROVIDER_LABEL}`);
+i
+    
+    // If multiple items requested, process sequentially
+    if (request.clothItemIds && request.clothItemIds.length > 1) {
+      return this.generateSequential(request);
+    }
+    
+
     if (PROVIDER_KEY === "vertex") {
       return this.generateWithVertex(request);
     }
@@ -108,6 +119,95 @@ export class VirtualTryOnService {
 
     return this.generateWithGeneric(request);
   }
+
+
+  private async generateSequential(request: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
+    if (!request.clothItemIds || request.clothItemIds.length === 0) {
+      throw new Error("No cloth items provided for sequential try-on");
+    }
+
+    console.log(`Sequential VTON: Processing ${request.clothItemIds.length} items`);
+    
+    const { prisma } = await import("@/lib/db");
+    const clothItems = await prisma.clothItem.findMany({
+      where: {
+        id: { in: request.clothItemIds },
+        profileId: request.profileId,
+      },
+      select: { id: true, imageUrl: true, category: true },
+    });
+
+    if (clothItems.length === 0) {
+      throw new Error("No valid cloth items found");
+    }
+
+    // Katman sırasına göre sırala: önce alttan başla
+    const categoryOrder: Record<string, number> = {
+      BOTTOM: 1,
+      DRESS: 2,
+      TOP: 3,
+      OUTERWEAR: 4,
+      SHOES: 5,
+      SOCKS: 6,
+      ACCESSORY: 7,
+      HAT: 8,
+    };
+    
+    clothItems.sort((a: { category: string }, b: { category: string }) => {
+      const orderA = categoryOrder[a.category] ?? 99;
+      const orderB = categoryOrder[b.category] ?? 99;
+      return orderA - orderB;
+    });
+
+    let currentModelUrl = request.modelImageUrl;
+    let lastResult: VirtualTryOnResult | null = null;
+
+    for (let i = 0; i < clothItems.length; i++) {
+      const item = clothItems[i];
+      console.log(`Sequential VTON: Step ${i + 1}/${clothItems.length} - ${item.category}`);
+
+      try {
+        const stepResult = await this.generateWithVertex({
+          garmentImageUrl: item.imageUrl,
+          modelImageUrl: currentModelUrl,
+          profileId: request.profileId,
+          clothItemId: item.id,
+          providerHints: request.providerHints,
+        });
+
+        if (!stepResult) {
+          console.warn(`Sequential VTON: Step ${i + 1} failed, continuing with previous result`);
+          continue;
+        }
+
+        // Use the result as the model for the next iteration
+        currentModelUrl = stepResult.imageUrl;
+        lastResult = stepResult;
+      } catch (error) {
+        console.error(`Sequential VTON: Step ${i + 1} error:`, error);
+        // Continue with the current model if one step fails
+        if (!lastResult) {
+          throw error; // If first step fails, throw error
+        }
+      }
+    }
+
+    if (!lastResult) {
+      throw new Error("Sequential VTON failed for all items");
+    }
+
+    // Update metadata to reflect sequential processing
+    return {
+      ...lastResult,
+      metadata: {
+        ...lastResult.metadata,
+        sequential: true,
+        itemsProcessed: clothItems.length,
+        finalItems: clothItems.map((item: { id: string }) => item.id),
+      },
+    };
+  }
+
 
   private async generateWithGeneric(payload: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
     const body = {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +19,7 @@ const getInitials = (name: string) => {
 type ProfileCard = {
   id: string;
   name: string;
+  customModelPhotos: string[];
 };
 
 type ProfileSelectClientProps = {
@@ -71,9 +73,19 @@ export const ProfileSelectClient = ({ profiles, activeProfileId }: ProfileSelect
               )}
               disabled={isSubmitting}
             >
-              <span className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-100 text-3xl font-semibold text-brand-600">
-                {getInitials(profile.name)}
-              </span>
+              {profile.customModelPhotos.length > 0 ? (
+                <Image
+                  src={profile.customModelPhotos[0]}
+                  alt={profile.name}
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-100 text-3xl font-semibold text-brand-600">
+                  {getInitials(profile.name)}
+                </span>
+              )}
               <span className="text-sm font-medium text-slate-800">{profile.name}</span>
               {isActive && <span className="text-xs font-semibold uppercase text-brand-500">Aktif profil</span>}
             </button>

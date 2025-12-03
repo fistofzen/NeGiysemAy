@@ -24,6 +24,7 @@ build/
 *.swo
 *~
 
+credentials/
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -130,3 +131,7 @@ test-results.xml
 
 # Turbo cache
 .turbo/ 
+
+credentials/
+
+negiysem-479808-b1d8b8d2f6d2.json

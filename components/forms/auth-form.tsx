@@ -4,6 +4,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
 export type AuthFormMode = "login" | "register";
 
@@ -70,39 +71,43 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   };
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      {mode === "register" && (
+    <div className="space-y-6">
+      <OAuthButtons />
+      
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        {mode === "register" && (
+          <Input
+            label="Adınız"
+            value={state.displayName}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setState((prev: FormState) => ({ ...prev, displayName: event.target.value }))
+            }
+            required
+          />
+        )}
         <Input
-          label="Adınız"
-          value={state.displayName}
+          type="email"
+          label="E-posta"
+          value={state.email}
           onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            setState((prev: FormState) => ({ ...prev, displayName: event.target.value }))
+            setState((prev: FormState) => ({ ...prev, email: event.target.value }))
           }
           required
         />
-      )}
-      <Input
-        type="email"
-        label="E-posta"
-        value={state.email}
-        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-          setState((prev: FormState) => ({ ...prev, email: event.target.value }))
-        }
-        required
-      />
-      <Input
-        type="password"
-        label="Şifre"
-        value={state.password}
-        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-          setState((prev: FormState) => ({ ...prev, password: event.target.value }))
-        }
-        required
-      />
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Gönderiliyor" : mode === "register" ? "Kayıt ol" : "Giriş yap"}
-      </Button>
-    </form>
+        <Input
+          type="password"
+          label="Şifre"
+          value={state.password}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setState((prev: FormState) => ({ ...prev, password: event.target.value }))
+          }
+          required
+        />
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Gönderiliyor" : mode === "register" ? "Kayıt ol" : "Giriş yap"}
+        </Button>
+      </form>
+    </div>
   );
 };

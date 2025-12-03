@@ -13,6 +13,23 @@ type GenerativeTryOnPanelProps = {
   items: OutfitItem[];
 };
 
+
+type ModelPhoto = {
+  id: string;
+  url: string;
+  isTemplate: boolean;
+};
+
+const fetchModelPhotos = async (profileId: string): Promise<ModelPhoto[]> => {
+  const response = await fetch(`/api/profiles/${profileId}/models`);
+  if (!response.ok) {
+    return [];
+  }
+  const data = (await response.json()) as { models: ModelPhoto[] };
+  return data.models;
+};
+
+
 const uploadModelPhoto = async (file: File, profileId: string) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -35,6 +52,9 @@ const requestGenerativeTryOn = async (
   params: {
     profileId: string;
     clothItemId?: string;
+
+    clothItemIds?: string[]; // Tüm kombin parçaları
+
     modelImageUrl: string;
     garmentPrompt?: string;
   }
@@ -47,17 +67,22 @@ const requestGenerativeTryOn = async (
 
   if (!response.ok) {
     const errorPayload = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorPayload?.message ?? "Generatif try-on isteği başarısız");
+
+    throw new Error(errorPayload?.message ?? "Virtual try-on isteği başarısız");
   }
 
-  return (await response.json()) as { imageUrl: string; prompt: string };
-};
+  return (await response.json()) as { imageUrl: string; prompt?: string };
 
 export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  const [useFullOutfit, setUseFullOutfit] = useState(true); // Tüm kombini kullan
   const [selectedClothItemId, setSelectedClothItemId] = useState<string>(items[0]?.clothItemId ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
   const [modelPreview, setModelPreview] = useState<string | null>(null);
+  const [selectedModelUrl, setSelectedModelUrl] = useState<string | null>(null);
+  const [modelPhotos, setModelPhotos] = useState<ModelPhoto[]>([]);
+
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultPrompt, setResultPrompt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +95,14 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
       label: `${item.category} (${item.role.toLowerCase()})`,
     }));
   }, [items]);
+
+
+  useEffect(() => {
+    if (isOpen && modelPhotos.length === 0) {
+      fetchModelPhotos(profileId).then(setModelPhotos).catch(console.error);
+    }
+  }, [isOpen, profileId, modelPhotos.length]);
+
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.target.files?.[0];
@@ -105,23 +138,44 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     setResultUrl(null);
     setResultPrompt(null);
 
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      setError("Lütfen bir referans fotoğraf seçin");
-      return;
+
+    // Check if user selected a pre-existing model or uploaded a new one
+    let modelImageUrl = selectedModelUrl;
+    
+    if (!modelImageUrl) {
+      const file = fileInputRef.current?.files?.[0];
+      if (!file) {
+        setError("Lütfen bir hazır model seçin veya fotoğraf yükleyin");
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        modelImageUrl = await uploadModelPhoto(file, profileId);
+      } catch (uploadError) {
+        console.error(uploadError);
+        setError("Model fotoğrafı yüklenemedi");
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      setIsSubmitting(true);
     }
 
-    setIsSubmitting(true);
     try {
-      const uploadedUrl = await uploadModelPhoto(file, profileId);
+      // Tüm kombin parçalarını gönder
+      const allClothItemIds = items.map(item => item.clothItemId);
+      
       const payload = await requestGenerativeTryOn({
         profileId,
-        clothItemId: selectedClothItemId || undefined,
-        modelImageUrl: uploadedUrl,
+        clothItemIds: useFullOutfit ? allClothItemIds : undefined,
+        clothItemId: !useFullOutfit ? selectedClothItemId || undefined : undefined,
+        modelImageUrl,
         garmentPrompt: customPrompt || undefined,
       });
       setResultUrl(payload.imageUrl);
-      setResultPrompt(payload.prompt);
+      setResultPrompt(payload.prompt ?? null);
+
     } catch (submissionError) {
       console.error(submissionError);
       setError((submissionError as Error).message ?? "İstek başarısız oldu");
@@ -138,8 +192,12 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">AI konsept render</p>
-          <p className="text-sm text-slate-600">Referans fotoğrafı yükleyip gpt-image-1 ile hızlı ön izleme al.</p>
+
+          <p className="text-xs uppercase tracking-wide text-slate-500">AI Virtual Try-On</p>
+          <p className="text-sm text-slate-600">
+            Google Vertex AI ile gerçekçi kombin görseli (ardışık giydirme)
+          </p>
+
         </div>
         <Button variant="subtle" onClick={() => setIsOpen((prev) => !prev)}>
           {isOpen ? "Formu gizle" : "AI görsel oluştur"}
@@ -148,7 +206,28 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
 
       {isOpen && (
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-          {options.length > 1 && (
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={useFullOutfit}
+                onChange={(e) => setUseFullOutfit(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span className="text-sm font-medium text-slate-700">
+                Tüm kombini ardışık giydir ({items.length} parça)
+              </span>
+            </label>
+            <p className="text-xs text-slate-500">
+              {useFullOutfit 
+                ? `Her kıyafet sırayla giydirilecek (${items.length} adımda). Her adımın sonucu bir sonraki için model olacak.` 
+                : "Sadece seçilen bir parça Google Vertex AI ile gerçekçi şekilde giydirilecek"}
+            </p>
+          </div>
+
+          {!useFullOutfit && options.length > 1 && (
+
             <Select
               label="Kıyafet parçası"
               value={selectedClothItemId}
@@ -157,13 +236,53 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
             />
           )}
 
-          <Input
-            ref={fileInputRef}
-            label="Model fotoğrafı"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
+
+          {modelPhotos.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Hazır model seç</label>
+              <div className="grid grid-cols-4 gap-2">
+                {modelPhotos.map((model) => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedModelUrl(model.url);
+                      setModelPreview(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                    }}
+                    className={`relative aspect-[3/4] overflow-hidden rounded-lg border-2 transition ${
+                      selectedModelUrl === model.url
+                        ? "border-brand-500 ring-2 ring-brand-300"
+                        : "border-slate-200 hover:border-brand-300"
+                    }`}
+                  >
+                    <Image
+                      src={model.url}
+                      alt={model.isTemplate ? "Hazır model" : "Özel model"}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Input
+              ref={fileInputRef}
+              label="Veya yeni model fotoğrafı yükle"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                handleFileChange(e);
+                setSelectedModelUrl(null);
+              }}
+            />
+          </div>
+
 
           <TextArea
             label="Ek stil notu (opsiyonel)"
@@ -172,9 +291,15 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
             onChange={(event) => setCustomPrompt(event.target.value)}
           />
 
-          {modelPreview && (
+          {(modelPreview || selectedModelUrl) && (
             <div className="relative aspect-[3/4] w-40 overflow-hidden rounded-xl border border-slate-200">
-              <Image src={modelPreview} alt="Model önizleme" fill className="object-cover" />
+              <Image
+                src={modelPreview || selectedModelUrl || ""}
+                alt="Model önizleme"
+                fill
+                className="object-cover"
+              />
+
             </div>
           )}
 
