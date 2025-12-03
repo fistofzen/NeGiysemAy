@@ -13,6 +13,7 @@ type GenerativeTryOnPanelProps = {
   items: OutfitItem[];
 };
 
+
 type ModelPhoto = {
   id: string;
   url: string;
@@ -27,6 +28,7 @@ const fetchModelPhotos = async (profileId: string): Promise<ModelPhoto[]> => {
   const data = (await response.json()) as { models: ModelPhoto[] };
   return data.models;
 };
+
 
 const uploadModelPhoto = async (file: File, profileId: string) => {
   const formData = new FormData();
@@ -50,7 +52,9 @@ const requestGenerativeTryOn = async (
   params: {
     profileId: string;
     clothItemId?: string;
+
     clothItemIds?: string[]; // Tüm kombin parçaları
+
     modelImageUrl: string;
     garmentPrompt?: string;
   }
@@ -63,20 +67,22 @@ const requestGenerativeTryOn = async (
 
   if (!response.ok) {
     const errorPayload = (await response.json().catch(() => null)) as { message?: string } | null;
+
     throw new Error(errorPayload?.message ?? "Virtual try-on isteği başarısız");
   }
 
   return (await response.json()) as { imageUrl: string; prompt?: string };
-};
 
 export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
+
   const [useFullOutfit, setUseFullOutfit] = useState(true); // Tüm kombini kullan
   const [selectedClothItemId, setSelectedClothItemId] = useState<string>(items[0]?.clothItemId ?? "");
   const [customPrompt, setCustomPrompt] = useState("");
   const [modelPreview, setModelPreview] = useState<string | null>(null);
   const [selectedModelUrl, setSelectedModelUrl] = useState<string | null>(null);
   const [modelPhotos, setModelPhotos] = useState<ModelPhoto[]>([]);
+
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultPrompt, setResultPrompt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,11 +96,13 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     }));
   }, [items]);
 
+
   useEffect(() => {
     if (isOpen && modelPhotos.length === 0) {
       fetchModelPhotos(profileId).then(setModelPhotos).catch(console.error);
     }
   }, [isOpen, profileId, modelPhotos.length]);
+
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const file = event.target.files?.[0];
@@ -129,6 +137,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     setError(null);
     setResultUrl(null);
     setResultPrompt(null);
+
 
     // Check if user selected a pre-existing model or uploaded a new one
     let modelImageUrl = selectedModelUrl;
@@ -166,6 +175,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
       });
       setResultUrl(payload.imageUrl);
       setResultPrompt(payload.prompt ?? null);
+
     } catch (submissionError) {
       console.error(submissionError);
       setError((submissionError as Error).message ?? "İstek başarısız oldu");
@@ -182,10 +192,12 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
+
           <p className="text-xs uppercase tracking-wide text-slate-500">AI Virtual Try-On</p>
           <p className="text-sm text-slate-600">
             Google Vertex AI ile gerçekçi kombin görseli (ardışık giydirme)
           </p>
+
         </div>
         <Button variant="subtle" onClick={() => setIsOpen((prev) => !prev)}>
           {isOpen ? "Formu gizle" : "AI görsel oluştur"}
@@ -194,6 +206,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
 
       {isOpen && (
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+
           <div className="space-y-2">
             <label className="flex items-center gap-2">
               <input
@@ -214,6 +227,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
           </div>
 
           {!useFullOutfit && options.length > 1 && (
+
             <Select
               label="Kıyafet parçası"
               value={selectedClothItemId}
@@ -221,6 +235,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
               options={options}
             />
           )}
+
 
           {modelPhotos.length > 0 && (
             <div className="space-y-2">
@@ -268,6 +283,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
             />
           </div>
 
+
           <TextArea
             label="Ek stil notu (opsiyonel)"
             placeholder="Örn: 'kırmızı halı konsepti, pastel arka plan'"
@@ -283,6 +299,7 @@ export const GenerativeTryOnPanel = ({ profileId, items }: GenerativeTryOnPanelP
                 fill
                 className="object-cover"
               />
+
             </div>
           )}
 

@@ -150,18 +150,22 @@ export type GenerativeTryOnRequest = {
   profileId: string;
   modelImageUrl: string;
   clothItemId?: string;
+ui
   clothItemIds?: string[]; // Çoklu kıyafet parçaları için
+
   garmentPrompt?: string;
 };
 
 export const generateGenerativeTryOn = async (
   request: GenerativeTryOnRequest
 ): Promise<{ imageUrl: string; prompt: string }> => {
+ ui
   const { profileId, clothItemId, clothItemIds, modelImageUrl, garmentPrompt } = request;
 
   const clothItemSummaries: string[] = [];
   
   // Tek bir clothItemId varsa
+
   if (clothItemId) {
     const clothItem = await prisma.clothItem.findFirst({
       where: { id: clothItemId, profileId },
@@ -174,6 +178,7 @@ export const generateGenerativeTryOn = async (
         notes: true,
       },
     });
+
 
     if (clothItem) {
       clothItemSummaries.push(buildGarmentSummary(clothItem));
@@ -201,9 +206,11 @@ export const generateGenerativeTryOn = async (
     for (const item of clothItems) {
       clothItemSummaries.push(buildGarmentSummary(item));
     }
+
   }
 
   const modelDescription = await describeModelImage(modelImageUrl);
+
 
   // Tüm kıyafet parçalarını birleştir
   const outfitDescription = clothItemSummaries.length > 0
@@ -222,6 +229,7 @@ export const generateGenerativeTryOn = async (
     profileId,
     folder: "generative-try-on",
     fileName: fileNameBase ? `${fileNameBase}-generative.png` : undefined,
+
     mimeType: "image/png",
   });
 

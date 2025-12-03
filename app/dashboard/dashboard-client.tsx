@@ -261,6 +261,23 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
             </div>
           </div>
 
+          {todayOutfit ? (
+            <OutfitCard
+              date={todayOutfit.date}
+              notes={todayOutfit.notes}
+              weatherSummary={todayOutfit.weatherSummary}
+              items={todayOutfit.items}
+              profileId={selectedProfile?.id}
+              enableGenerative
+            />
+          ) : (
+            <p className="text-sm text-slate-500">
+              Bugün için henüz kombin oluşturulmadı. Hemen bir öneri iste.
+            </p>
+          )}
+        </Card>
+
+
           {/* Sidebar */}
           <div className="space-y-6 lg:col-span-1">
             {/* Stats */}
@@ -323,6 +340,31 @@ const DashboardClient = ({ initialProfiles, initialDate, activeProfileId }: Dash
               </div>
             </div>
           </div>
+
+          <WardrobeGrid items={selectedProfile?.wardrobe ?? []} />
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-slate-900">Kombin geçmişi</h2>
+          <span className="text-xs text-slate-500">
+            {selectedProfile?.outfits.length ?? 0} kayıt
+          </span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {outfitsSorted.map((outfit) => (
+            <OutfitCard
+              key={outfit.id}
+              date={outfit.date}
+              notes={outfit.notes}
+              weatherSummary={outfit.weatherSummary}
+              items={outfit.items}
+              profileId={selectedProfile?.id}
+              enableGenerative
+            />
+          ))}
+
         </div>
       </div>
     </div>

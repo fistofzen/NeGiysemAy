@@ -5,7 +5,9 @@ import Image from "next/image";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
+
 import { GenerativeTryOnPanel } from "@/components/dashboard/generative-try-on-panel";
 
 export type OutfitItem = {
@@ -25,7 +27,9 @@ export type OutfitCardProps = {
   items: OutfitItem[];
   profileId?: string;
   enableGenerative?: boolean;
+
   onDelete?: () => void;
+
 };
 
 const roleLabels: Record<string, string> = {
@@ -41,18 +45,22 @@ const roleLabels: Record<string, string> = {
 };
 
 export const OutfitCard = ({
+
   id,
+
   date,
   notes,
   weatherSummary,
   items,
   profileId,
   enableGenerative,
+
   onDelete,
 }: OutfitCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+
   const formattedDate = format(new Date(date), "d MMMM yyyy EEEE", { locale: tr });
 
   const handleDelete = async () => {

@@ -16,7 +16,9 @@ export const POST = async (request: Request) => {
   }
 
   try {
+
     const { clothItemId, clothItemIds, garmentImageUrl, profileId: explicitProfileId, modelImageUrl, providerHints } = json;
+
 
     const profile = explicitProfileId
       ? await prisma.profile.findFirst({
@@ -28,6 +30,7 @@ export const POST = async (request: Request) => {
     if (!profile) {
       return NextResponse.json({ message: "Profil bulunamadı" }, { status: 404 });
     }
+
 
     // Handle multiple items with sequential processing
     if (clothItemIds && clothItemIds.length > 1) {
@@ -52,6 +55,7 @@ export const POST = async (request: Request) => {
         metadata: result.metadata,
       });
     }
+
 
     let finalGarmentUrl = garmentImageUrl ?? undefined;
     if (clothItemId) {

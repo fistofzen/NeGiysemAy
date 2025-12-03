@@ -249,16 +249,20 @@ const buildRuleBasedOutfit = (
     tryAdd(["OUTERWEAR"], "OUTERWEAR");
   }
 
+
   // Her kombinasyon: 1 ayakkabı (varsa SHOES kategorisinde), 1 çorap (soğuksa ve varsa), 1 aksesuar (varsa), 1 şapka (varsa)
   // SADECE o kategoride ürün varsa ekle
+
   const shoes = tryAdd(["SHOES"], "SHOES");
   if (shoes && weather && weather.temperatureMinC < 18) {
     tryAdd(["SOCKS"], "SOCKS");
   }
 
+
   // Sadece ilgili kategorilerde ürün varsa ekle
   tryAdd(["ACCESSORY"], "ACCESSORY");
   tryAdd(["HAT"], "HAT");
+ain
 
   if (results.length === 0 && wardrobe.length > 0) {
     results.push({ clothItemId: wardrobe[0].id, role: "OTHER" });
@@ -298,9 +302,11 @@ const mergeWithRuleBasedFallback = (
 ): AIOutfitSuggestionItem[] => {
   const availableIds = new Set(context.wardrobe.map((item) => item.id));
   const itemsById = new Map(context.wardrobe.map((item) => [item.id, item]));
+
   const normalized: AIOutfitSuggestionItem[] = [];
   const usedRoles = new Set<OutfitRole>();
   const usedIds = new Set<string>();
+
 
   // Kategori-role uyumunu kontrol et
   const isValidCategoryForRole = (category: string, role: OutfitRole): boolean => {
@@ -334,6 +340,7 @@ const mergeWithRuleBasedFallback = (
       continue;
     }
     
+ main
     usedRoles.add(role);
     usedIds.add(id);
     normalized.push({ clothItemId: id, role });

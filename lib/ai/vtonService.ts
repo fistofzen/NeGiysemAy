@@ -4,11 +4,13 @@ import { saveBuffer } from "@/lib/storage/storage";
 import { buildVtonEndpoint, getAccessToken } from "@/lib/google/vertexClient";
 
 export type VirtualTryOnRequest = {
+
   garmentImageUrl?: string;
   modelImageUrl: string;
   profileId?: string;
   clothItemId?: string;
   clothItemIds?: string[];
+
   providerHints?: Record<string, unknown>;
 };
 
@@ -98,12 +100,14 @@ const loadImageBuffer = async (imageUrl: string): Promise<{ buffer: Buffer; mime
 export class VirtualTryOnService {
   async generate(request: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
     console.log(`Using VTON provider: ${PROVIDER_LABEL}`);
+i
     
     // If multiple items requested, process sequentially
     if (request.clothItemIds && request.clothItemIds.length > 1) {
       return this.generateSequential(request);
     }
     
+
     if (PROVIDER_KEY === "vertex") {
       return this.generateWithVertex(request);
     }
@@ -115,6 +119,7 @@ export class VirtualTryOnService {
 
     return this.generateWithGeneric(request);
   }
+
 
   private async generateSequential(request: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
     if (!request.clothItemIds || request.clothItemIds.length === 0) {
@@ -203,6 +208,7 @@ export class VirtualTryOnService {
     };
   }
 
+
   private async generateWithGeneric(payload: VirtualTryOnRequest): Promise<VirtualTryOnResult | null> {
     const body = {
       garment_image_url: payload.garmentImageUrl,
@@ -265,36 +271,10 @@ export class VirtualTryOnService {
   }
 
   private async generateWithVertex(payload: VirtualTryOnRequest): Promise<VirtualTryOnResult> {
-    // Model image
+    const garment = await loadImageBuffer(payload.garmentImageUrl);
     const model = await loadImageBuffer(payload.modelImageUrl);
+    const garmentBase64 = garment.buffer.toString("base64");
     const modelBase64 = model.buffer.toString("base64");
-
-    // Vertex AI VTON only supports 1 product image
-    let garmentBase64: string;
-    
-    if (payload.clothItemIds && payload.clothItemIds.length > 0) {
-      // Take only the first item for Vertex
-      const { prisma } = await import("@/lib/db");
-      const clothItem = await prisma.clothItem.findFirst({
-        where: {
-          id: payload.clothItemIds[0],
-          profileId: payload.profileId,
-        },
-        select: { imageUrl: true },
-      });
-
-      if (!clothItem) {
-        throw new Error("Cloth item not found for Vertex VTON");
-      }
-
-      const garment = await loadImageBuffer(clothItem.imageUrl);
-      garmentBase64 = garment.buffer.toString("base64");
-    } else if (payload.garmentImageUrl) {
-      const garment = await loadImageBuffer(payload.garmentImageUrl);
-      garmentBase64 = garment.buffer.toString("base64");
-    } else {
-      throw new Error("No garment image provided for Vertex VTON");
-    }
 
     const endpoint = buildVtonEndpoint();
     const accessToken = await getAccessToken();
@@ -333,9 +313,8 @@ export class VirtualTryOnService {
         },
       ],
       parameters: {
-        baseSteps: 50, // Daha yüksek kalite için artırıldı (varsayılan 20)
+        baseSteps: 20,
         sampleCount: 1,
-        guidanceScale: 7.5, // Ürün uyumluluğu için rehberlik skoru
         ...(parameterOverrides ?? {}),
       },
     };
@@ -372,15 +351,10 @@ export class VirtualTryOnService {
     }
 
     const buffer = Buffer.from(base64Image, "base64");
-    
-    const fileNameBase = payload.clothItemIds && payload.clothItemIds.length > 0
-      ? payload.clothItemIds.join("-")
-      : payload.clothItemId;
-    
     const storedUrl = await saveBuffer(buffer, {
       profileId: payload.profileId,
       folder: "virtual-try-on",
-      fileName: fileNameBase ? `${fileNameBase}-vertex.png` : undefined,
+      fileName: payload.clothItemId ? `${payload.clothItemId}-vertex.png` : undefined,
     });
 
     return { imageUrl: storedUrl, provider: PROVIDER_LABEL, metadata: raw };

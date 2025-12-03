@@ -8,7 +8,9 @@ import { generateGenerativeTryOn } from "@/lib/ai/generativeTryOnService";
 const requestSchema = z.object({
   modelImageUrl: z.string().min(1),
   clothItemId: z.string().optional(),
+
   clothItemIds: z.array(z.string()).optional(), // Kombin için çoklu kıyafetler
+
   garmentPrompt: z.string().optional(),
   profileId: z.string().optional(),
 });
@@ -33,7 +35,9 @@ export const POST = async (request: Request) => {
   }
 
   try {
+
     const { modelImageUrl, clothItemId, clothItemIds, garmentPrompt, profileId: explicitProfileId } = parsed.data;
+
     const { origin } = new URL(request.url);
 
     const toAbsoluteUrl = (value: string) => {
@@ -57,7 +61,9 @@ export const POST = async (request: Request) => {
     const result = await generateGenerativeTryOn({
       profileId: profile.id,
       clothItemId,
+
       clothItemIds,
+
       modelImageUrl: toAbsoluteUrl(modelImageUrl),
       garmentPrompt,
     });
